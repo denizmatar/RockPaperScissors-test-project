@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract RockPaperScissors {
     /*
@@ -11,6 +12,12 @@ contract RockPaperScissors {
     3 = SCISSORS
 
     */
+
+    // Token address
+    address tokenAddress;
+
+    // Token instance
+    IERC20 token = IERC20(tokenAddress);
 
     // Single bet amount
     uint256 betAmount;
@@ -47,7 +54,11 @@ contract RockPaperScissors {
     mapping(address => bytes32) playerHashedMoves;
 
     // CONSTRUCTOR
-    constructor(uint256 _gameLengthSeconds, uint256 _betAmount) {
+    constructor(
+        uint256 _gameLengthSeconds,
+        uint256 _betAmount,
+        address _unit
+    ) {
         /* 
         Requires 120 seconds for game time considering transfer times for players
         This Commit&Reveal scheme needs 4 sequential transactions: 
@@ -65,10 +76,13 @@ contract RockPaperScissors {
 
         // Sets the game end time
         gameEndTime = block.timestamp + _gameLengthSeconds + 1 seconds;
+
+        // Creates token instance
+        token = IERC20(_unit);
     }
 
     // CORE FUNCTIONS
-    function commitMove(bytes32 hashedMove) public payable {
+    function commitMove(bytes32 _hashedMove) public payable {
         // Valid move check will be done by front-end
 
         // Only allow moves during game time
@@ -83,8 +97,10 @@ contract RockPaperScissors {
         // Only allow 2 players at the same time
         require(numberOfPlayers <= 1, "Can't accept more than 2 players");
 
+        token.transferFrom(msg.sender, address(this), betAmount);
+
         // Adds hashed move to storage
-        playerHashedMoves[msg.sender] = hashedMove;
+        playerHashedMoves[msg.sender] = _hashedMove;
 
         // Changes user status to "COMMITTED"
         playerStatuses[msg.sender] = status.COMMITTED;
@@ -140,16 +156,16 @@ contract RockPaperScissors {
             if (res == result.TIE) {
                 // Transfer betAmount to each player
                 console.log("TIE");
-                player1.addr.transfer(betAmount);
-                player2.addr.transfer(betAmount);
+                token.transfer(player1.addr, betAmount);
+                token.transfer(player2.addr, betAmount);
             } else if (res == result.WIN) {
                 // Transfer (betAmount * 2) to player1
                 console.log("player1 wins");
-                player1.addr.transfer(betAmount * 2);
+                token.transfer(player1.addr, betAmount * 2);
             } else if (res == result.LOSE) {
                 // Transfer (betAmount * 2) to player2
                 console.log("player2 wins");
-                player2.addr.transfer(betAmount * 2);
+                token.transfer(player2.addr, betAmount * 2);
             }
         }
     }

@@ -34,14 +34,18 @@ describe("Rock Paper Scissors", function () {
   beforeEach(async () => {
     [owner, user1, user2, ...accounts] = await ethers.getSigners();
 
-    const RPS = await ethers.getContractFactory("RockPaperScissors");
-    // Deploys the game contract for 10 minutes with a bet amount of 1 Ether
-    contract = await RPS.deploy(10 * 60, ethers.utils.parseEther("1"));
-    await contract.deployed();
-
     const tokenFactory = await ethers.getContractFactory("MTRToken");
     token = await tokenFactory.deploy(100);
     await token.deployed();
+
+    const RPS = await ethers.getContractFactory("RockPaperScissors");
+    // Deploys the game contract for 10 minutes with a bet amount of 1 Ether
+    contract = await RPS.deploy(10 * 60, 10, token.address);
+    await contract.deployed();
+
+    await token.transfer(user1.address, 20);
+    await token.approve(contract.address, 10);
+    await token.connect(user1).approve(contract.address, 10);
   });
   describe("committing", async () => {
     it("players can bet", async () => {
@@ -101,24 +105,18 @@ describe("Rock Paper Scissors", function () {
   });
   describe("evaluation", async () => {
     it("evaluates", async () => {
-      await contract.commitMove(hashedMove1, {
-        value: ethers.utils.parseEther("1"),
-      });
-      await contract
-        .connect(user1)
-        .commitMove(hashedMove2, { value: ethers.utils.parseEther("1") });
+      await contract.commitMove(hashedMove1);
+      await contract.connect(user1).commitMove(hashedMove2);
 
       await contract.revealMove(1, "ILIKESALTYFOOD");
 
-      const balanceBefore = await user1.getBalance();
+      const balanceBefore = (await token.balanceOf(user1.address)).toNumber();
 
-      const tx = await contract.connect(user1).revealMove(2, "ILIKESPICYFOOD");
-      const receipt = await tx.wait();
-      const gasUsed = receipt.gasUsed;
+      await contract.connect(user1).revealMove(2, "ILIKESPICYFOOD");
 
-      const balanceAfter = await user1.getBalance();
+      const balanceAfter = (await token.balanceOf(user1.address)).toNumber();
 
-      expect(balanceAfter).to.be.above(ethers.utils.parseEther("10000"));
+      expect(balanceAfter - balanceBefore).to.equal(20);
     });
   });
 });
