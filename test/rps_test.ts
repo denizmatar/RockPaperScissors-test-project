@@ -118,5 +118,18 @@ describe("Rock Paper Scissors", function () {
 
       expect(balanceAfter - balanceBefore).to.equal(20);
     });
+    it("can withdraw after game ends if player 2 doesn't reveal or even commit", async () => {
+      await contract.commitMove(hashedMove1);
+
+      await network.provider.send("evm_increaseTime", [900]);
+
+      const balanceBefore = (await token.balanceOf(owner.address)).toNumber();
+
+      await contract.withdraw();
+
+      const balanceAfter = (await token.balanceOf(owner.address)).toNumber();
+
+      expect(balanceAfter - balanceBefore).to.equal(10);
+    });
   });
 });

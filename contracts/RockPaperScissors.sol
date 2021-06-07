@@ -200,6 +200,16 @@ contract RockPaperScissors {
         }
     }
 
+    function withdraw() external {
+        require(block.timestamp > gameEndTime, "Game hasn't ended yet");
+
+        if (msg.sender == player1.addr) {
+            token.transfer(player1.addr, betAmount);
+        } else if (msg.sender == player2.addr) {
+            token.transfer(player2.addr, betAmount);
+        }
+    }
+
     // GETTERS
     function getMoves(address _user) public view returns (bytes32) {
         return playerHashedMoves[_user];
